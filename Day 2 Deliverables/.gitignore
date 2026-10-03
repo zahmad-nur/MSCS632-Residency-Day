@@ -1,0 +1,12 @@
+# Rust build output
+rust-chat/target/
+
+# Chat databases made while testing or demoing (chat.db, demo.db, ...)
+*.db
+*.db-wal
+*.db-shm
+
+# Editor and Mac files
+.DS_Store
+.idea/
+.vscode/
