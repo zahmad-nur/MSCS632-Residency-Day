@@ -1,17 +1,9 @@
-# Chat App, Rust and Go: built step by step from the spec
+# One Chat App, Rust and Go
 
-Each step adds one piece of the design spec in **both** languages, with tests,
-and a check that both versions print exactly the same output.
+A CLI-based chat application developed in both Rust and Go. Both versions are command-line programs with simulated users and no networking. Two users can chat one-to-one, with every message stored in SQLite along with a timestamp and user IDs. Messages can also be filtered and searched by user or keyword.
 
-| Step | What it adds | Status |
-|---|---|---|
-| 1 | `User` and `Message` types and their rules (Day 1 Report, Table 1) | done |
-| 2 | SQLite store (schema, save a batch in one transaction) and search by user / keyword | done |
-| 3 | Two simulated users chatting at once: event enum / struct, async tasks / goroutines, channels, save every 100 | done |
-| Extra | Saved keywords (Day 1 Report, Appendix): save, list, forget, rerun over saved and pending messages | done |
-| 4 | Command prompt for the live demo (send, history, search, keywords, simulate) | done |
 
-## Step 1: the data model
+## The Data Model
 
 | Rule from the spec | Rust (`rust-chat/src/users.rs`, `messages.rs`) | Go (`go-chat/chat/users.go`, `messages.go`) |
 |---|---|---|
@@ -23,7 +15,7 @@ and a check that both versions print exactly the same output.
 | No database ID until saved | `id: Option<i64>` (`None` = unsaved) | `ID int64` (`0` = unsaved), `IsSaved()` |
 | Errors | `UserError` and `MessageError` enums, matched exhaustively | error values checked with `errors.Is` |
 
-## Step 2: store and search
+## Store and Search
 
 | Piece | Rust (`store.rs`, `search.rs`) | Go (`store.go`, `search.go`) |
 |---|---|---|
@@ -35,7 +27,7 @@ and a check that both versions print exactly the same output.
 | Search pending (unsaved) | returns `Vec<&Message>`: borrowed references, no copies | returns `[]Message`: copies |
 | Reading rows | typed `row.get` inside a closure | `rows.Scan(&field, ...)` with pointers |
 
-## Step 3: simulated users (concurrency)
+## Simulated Users (concurrency)
 
 One **session** owns the chat state (history list, pending list, database). The two simulated users run at the same time and send it events over a **channel**; nobody else touches the state, so no lock is needed.
 
@@ -51,7 +43,7 @@ One **session** owns the chat state (history list, pending list, database). The 
 | Database calls | moved to a blocking thread with `spawn_blocking`, the store is moved there and back | called directly; the Go runtime handles the blocking call |
 | After close | the session **hands the store back** to the caller | the caller still has the same `*Store` pointer all along |
 
-Performance test (Day 1 Report, Table 6): `./scripts/bench.sh` runs 10,000 messages five times per language and prints time and peak memory. Use the numbers from your own machine.
+Performance test (Day 3 Report, Table 2): `./scripts/bench.sh` runs 10,000 messages five times per language and prints time and peak memory. Use the numbers from your own machine.
 
 ## Extra: saved keywords (Day 1 Report, Appendix)
 
@@ -65,7 +57,7 @@ A user saves keywords and reruns them later. They live in a new `saved_keywords`
 
 See `docs/EVIDENCE_unhandled_events.md` for the real compiler and test output, ready for the report.
 
-## Step 4: the command prompt (live demo)
+## The command prompt (live demo)
 
 Running the program now starts an interactive prompt. The prompt is one more task / goroutine talking to the session over the channel, like the simulated users; `simulate` starts those users in the background, so messages keep arriving while you type. The scripted demo is still there with `--demo`.
 
@@ -160,9 +152,13 @@ cd ..
 # Everything: both test suites, then the checks that Go and Rust behave the same
 chmod +x scripts/*.sh
 ./scripts/test_all.sh
+
+# Expected: Go `ok` (25 tests), Rust `test result: ok. 21 passed`, then
+# `PASS: scripted demo: Go and Rust identical (82 lines).` and `PASS: command prompt: Go and Rust identical (55 lines).`
+
+scripts/bench.sh # runs the performance test (10,000 messages, five runs per language).
 ```
 
-Expected: Go `ok` (25 tests), Rust `test result: ok. 21 passed`, then
-`PASS: scripted demo: Go and Rust identical (82 lines).` and `PASS: command prompt: Go and Rust identical (55 lines).`
 
-`scripts/bench.sh` runs the performance test (10,000 messages, five runs per language).
+
+
